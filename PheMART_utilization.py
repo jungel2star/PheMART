@@ -1,32 +1,22 @@
 import os.path
-
 import numpy as np
 import pandas as pd
 import random
 import time
 from sklearn.metrics.pairwise import cosine_similarity
-
-dirr = "/home/star/junwen/side/snps/"
-dirr = "/home/juw956/SNPs_codes/datasets/"
 dirr = "/n/data1/hsph/biostat/celehs/lab/junwen/SNPs_codes/datasets/"
-# dirr="C:\\jungel\\work\\Bio_medical\\1_gene_disease\\SNPs_codes\\datasets\\"
-# Clivar_snps_disease_Pathogenic_only
-label_file = "Clivar_snps_disease_Pathogenic_Likely_4_11_0410_trait_with_ALL_no_thers_1024.csv"  # Clivar_snps_disease_Pathogenic_only  Clivar_snps_disease_Pathogenic_Likely
-file_CUI_covered = "CUIs_all_covered_CODER_0410_4749_noOTHERS.csv"  # CUIs_all_covered_CODER_likely
-
-label_file_pathogenic = "Clivar_snps_disease_PathogenicALL_Likely_4_11_0410.csv"
-file_PPI = "PrimeKG.csv"
-file_pathway = "PrimeKG.csv"
-file_coexpression = "gene_coexpression_gene2vec_dim_200_iter_9.txt"
-disease_file_embedding_EHR = "Epoch_1000_L1_L2_3layer_MGB_VA_emb_embeddings_coder_clinvar_traits_cui_mapped_ALL_0410_with_all_renamed_withCUI_noOthers.csv"
-disease_file_embedding = "embeddings_coder_clinvar_traits_cui_mapped_ALL_0410_with_all_renamed_withCUI_noOthers.csv"  # node_disease_CUI_mapped_CUI_embedding.npy
-# node_disease_CUI_mapped_CUI_embedding.csv    node_disease_CUI_mapped_sapbert.csv  clinvar_traits_cui_mapped_ALL_0410_embedding.csv
+label_file = "Clivar_snps_disease_Pathogenic_Likely_4_11_0410_trait_with_ALL_no_thers_1024.csv"    #the file with all the labeled snps
+file_CUI_covered = "CUIs_all_covered_CODER_0410_4749_noOTHERS.csv" #the file with all the CUIs
+file_label_as_pathogenic = "Clivar_snps_disease_PathogenicALL_Likely_4_11_0410.csv" 
+file_PPI_labels = "PrimeKG.csv" #the file with all the PPIs
+file_pathway = "PrimeKG.csv" #the file with all the pathways
+file_coexpression = "gene_coexpression_gene2vec_dim_200_iter_9.txt" #the file with all the coexpression
+disease_file_embedding_EHR = "Epoch_1000_L1_L2_3layer_MGB_VA_emb_embeddings_coder_clinvar_traits_cui_mapped_ALL_0410_with_all_renamed_withCUI_noOthers.csv" #the file with all the diseases's ERH embeddings
+disease_file_embedding_LLM = "embeddings_coder_clinvar_traits_cui_mapped_ALL_0410_with_all_renamed_withCUI_noOthers.csv" #the file with all the diseases's LLM embeddings
 snps_label_file = "labeled_230201_clinvar.csv"
 snps_label_file_embedding = "labeled_230201_clinvar_embedding.npy"
-
 snps_label_file_miss = "snps_miss_without_snp_embedding_filter.csv"
 snps_label_file_embedding_miss = "snps_miss_without_snp_embedding_filter_embedding_seq.npy"
-
 snps_unlabel_file = "unlabeled_230201_clinvar.csv"
 snps_unlabel_file_embedding = "unlabeled_230201_clinvar_embedding.npy"
 file_emb_wild = "wildtype_embeddings.csv"
@@ -38,26 +28,11 @@ file_benign = "Clivar_snps_disease_benign_Likely_4_11_0410.csv"
 file_gene_save_mapped = "Mapping_snps_genes.csv"
 file_gene_save_all = "All_genes.csv"
 file_hpo_embedding = "UDN_HPO_term_ALL_with_name_embedding_coder.csv"
-
 file_gene_negative = "neg_seq_100.csv"
-file_gene_negative_emb = "neg_seq_embedding.npy"
 PPI_number_threshold = 10
 test_number = 10000000
-
 ###########Gene negativer protein embedding #############################snps embedding ##################
-dic_gene_negative_emb = {}
-embedding = np.load(dirr + file_gene_negative_emb)
-embedding = np.array(embedding)
-print("SNPs embedding shape: ", embedding.shape)
-df = pd.read_csv(dirr + file_gene_negative)
-genes = list(df["gene"])
-if not len(genes) == len(embedding):
-    print("-----------------------------------------error: ",
-          "len(genes) unequal to len(embedding)--------------------------", "error---------------")
-for rowi in range(len(genes)):
-    gene = str(genes[rowi]).strip()
-    dic_gene_negative_emb.setdefault(gene, []).append(embedding[rowi])
-print("dic_gene_negative_emb: ", len(dic_gene_negative_emb))
+
 
 dic_gene_corexpression = {}
 lines = open(dirr + file_coexpression).readlines()
@@ -66,7 +41,6 @@ embedding_all = []
 for line in lines:
     line = line.strip()
     gene = line.split()[0]
-
     vec = np.array([float(x) for x in line.split()[1:]])
     dic_gene_corexpression[gene] = vec
     embedding_all.append(vec)
@@ -78,13 +52,9 @@ dic_gene_emb = {}
 df = pd.read_csv(dirr + file_emb_wild)
 genes = list(df["gene"])
 features_all = np.array(df[df.columns[1:]])
-print("genes len: ", len(genes))
-print("features_all shape: ", features_all.shape)
-
 for rowi in range(len(genes)):
     gene = str(genes[rowi]).strip()
     dic_gene_emb[gene] = features_all[rowi, :]
-
 embedding_gene_all = []
 gene_list = []
 for gene in dic_gene_emb:
@@ -173,20 +143,16 @@ df = pd.read_csv(dirr + snps_label_file)
 SNPs = list(df["Name"])
 print(" labeled SNPs: ", len(SNPs))
 dic_snps_no_gene_all = {}
-if not len(SNPs) == len(embedding):
-    print("-----------------------------------------error: ",
-          "len(SNPs) unequal to len(embedding)--------------------------", "error---------------")
 for rowi in range(len(SNPs)):
     dic_snps_emb[str(SNPs[rowi])] = np.array(embedding[rowi, :])
     if str(SNPs[rowi]) in dic_snps_gene:
         if not dic_snps_gene[str(SNPs[rowi])] in dic_gene_emb:
             dic_snps_no_gene_all[str(SNPs[rowi])] = 1
-print("dic_snps_emb len: ", len(dic_snps_emb))
-print("dic_snps_no_gene_all: ", len(dic_snps_no_gene_all))
+
+
 
 for gene in dic_gene_emb:
     dic_snps_emb[gene] = dic_gene_emb[gene]
-
 ####unlabeled snps
 embedding = np.load(dirr + snps_unlabel_file_embedding)
 embedding = np.array(embedding)
@@ -195,9 +161,6 @@ df = pd.read_csv(dirr + snps_unlabel_file)
 SNPs = list(df["Name"])
 print(" unlabeled SNPs: ", len(SNPs))
 dic_snps_no_gene_all_unlabel = {}
-if not len(SNPs) == len(embedding):
-    print("-----------------------------------------error: ",
-          "len(SNPs) unequal to len(embedding)--------------------------", "error---------------")
 
 for rowi in range(len(SNPs)):
     dic_snps_emb[str(SNPs[rowi])] = np.array(embedding[rowi, :])
@@ -205,8 +168,6 @@ for rowi in range(len(SNPs)):
 
         if not dic_snps_gene[str(SNPs[rowi])] in dic_gene_emb:
             dic_snps_no_gene_all_unlabel[str(SNPs[rowi])] = 1
-print("dic_snps_emb len: ", len(dic_snps_emb))
-print("dic_snps_no_gene_all_unlabel: ", len(dic_snps_no_gene_all_unlabel))
 
 ##########missed varaints
 embedding = np.load(dirr + snps_label_file_embedding_miss)
@@ -214,26 +175,19 @@ embedding = np.array(embedding)
 df = pd.read_csv(dirr + snps_label_file_miss)
 SNPs = list(df["snp"])
 dic_snps_no_gene_all_miss = {}
-if not len(SNPs) == len(embedding):
-    print("-----------------------------------------error: ",
-          "len(SNPs) unequal to len(embedding)--------------------------", "error---------------")
+
 for rowi in range(len(SNPs)):
     dic_snps_emb[str(SNPs[rowi])] = np.array(embedding[rowi, :])
     if str(SNPs[rowi]) in dic_snps_gene:
         if not dic_snps_gene[str(SNPs[rowi])] in dic_gene_emb:
             dic_snps_no_gene_all_miss[str(SNPs[rowi])] = 1
-print("dic_snps_emb len: ", len(dic_snps_emb))
-print("dic_snps_no_gene_all_miss: ", len(dic_snps_no_gene_all_miss))
 code_save = []
 for snp in dic_snps_emb:
     code_save.append(dic_snps_emb[snp])
-print("embedding mean snps_label_file_embedding_miss: ", np.mean(embedding))
-print("---snps embedding unique  mean: ", np.mean(np.array(code_save)))
+
 
 ###########snps embedding #############################snps embedding ##################
-
-
-df = pd.read_csv(dirr + label_file_pathogenic)
+df = pd.read_csv(dirr + file_label_as_pathogenic)
 snps_patho_all = set(list(df["snps"]))
 dic_snps_patho = {}
 for snp in snps_patho_all:
@@ -267,18 +221,16 @@ for snp, category in zip(clinvar_name, alphamissense_class):
         elif "pathogenic" in category:
             if snp in dic_snps_emb and snp in dic_snps_gene and dic_snps_gene[snp] in dic_gene_emb:
                 dic_snps_patho[snp] = 1
-
 snps_patho_all = set(list(dic_snps_patho.keys()))
-print("dic_snps_patho: ", len(dic_snps_patho))
 
-#####################benign SNPs#####################
+
 ###########disease embedding ###########################################
 df_ehr = pd.read_csv(dirr + disease_file_embedding_EHR)
-df = pd.read_csv(dirr + disease_file_embedding)
+df = pd.read_csv(dirr + disease_file_embedding_LLM)
 embedding = np.array(df[df.columns[2:]])
 embedding_cui_all = []
 print("CUIs embedding shape: ", embedding.shape)
-CUIs = list(pd.read_csv(dirr + disease_file_embedding)["CUIs"])
+CUIs = list(pd.read_csv(dirr + disease_file_embedding_LLM)["CUIs"])
 print(" labeled CUIs: ", len(CUIs))
 if not len(CUIs) == len(embedding):
     print("-----------------------------------------error: ",
@@ -294,18 +246,6 @@ dic_cui_emb["benign"] = np.min(np.array(embedding_cui_all),
                                axis=0)  # np.zeros(shape=(len(embedding[0, :]),))  #   np.mean(embedding,axis=0)    #
 # dic_cui_emb["others"]=  np.max(embedding,axis=0) #np.ones(shape=(len(embedding[0, :]),))*0.5   #np.sum(embedding,axis=0)  #
 #
-print("embedding_cui_all mean diseasese: ", np.mean(embedding_cui_all))
-
-# ##############hpo embedding###################
-# df=pd.read_csv(dirr+file_hpo_embedding)
-# embedding=np.array(df[df.columns[2:]])
-# CUIs = list(pd.read_csv(dirr+file_hpo_embedding)["HPO"])
-# if not len(CUIs)==len(embedding):
-#     print ("-----------------------------------------error: ",  "len(CUIs) unequal to len(embedding)--------------------------","error---------------")
-# for rowi in range(len(CUIs)):
-#     dic_cui_emb[str(CUIs[rowi]).strip()] = np.array(embedding[rowi, :])
-# print ("dic_cui_emb with HPO len: ",len(dic_cui_emb))
-###########disease embedding ######################################
 
 
 ############labeled pairs######################
@@ -432,15 +372,6 @@ print("----dic_snp_domain len: ", len(dic_snp_domain))
 print("------gene_valid_snps_with_domain len: ", len(gene_valid_snps_with_domain))
 ################################extract snps with domains############################################
 
-# print ("pairs_valid: ",pairs_valid)
-# print ("dic_snps_disease len: ",len(dic_snps_cui))
-# print ("dic_cui_snps len: ",len(dic_cui_snps))
-# print ("dic_snps_labeled len: ",len(dic_snps_labeled))
-# print ("dic_snps_labeled_emb len: ",len(dic_snps_labeled_emb))
-############labeled pairs######################
-# if os.path.exists(dirr+file_CUI_covered):
-#     CUIs_all_covered = list(pd.read_csv(dirr + file_CUI_covered)["CUIs"])
-# else:
 CUIs_all_covered = list(dic_cui_valid.keys())
 df = pd.DataFrame({"CUIs": CUIs_all_covered})
 df.to_csv(dirr + file_CUI_covered, index=False)
@@ -448,14 +379,8 @@ df.to_csv(dirr + file_CUI_covered, index=False)
 snps_with_embedding = dic_snps_emb.keys()
 snps_with_gene = dic_snps_gene.keys()
 
-print("----------snps_with_embedding len: ", len(snps_with_embedding))
-print("----------snps_with_gene len: ", len(snps_with_gene))
 snps_with_embedding_gene = list(set(snps_with_embedding).intersection(set(snps_with_gene)))
-print("----------snps_with_embedding_gene len: ", len(snps_with_embedding_gene))
 
-print("----------------genes covered by labeled snps: ", len(dic_gene_label))
-print("----------------genes covered by ALL snps dic_gene_snps: ", len(dic_gene_snps))
-print("----------------genes with embeddings: ", len(dic_gene_emb))
 
 dic_ppi_HiUnion = {}
 dic_ENSG_gene = {}
@@ -482,11 +407,6 @@ for gene in dic_ppi_HiUnion:
         PPI_numbers_HiUnion.append(len(dic_ppi_HiUnion[gene]))
 
 PPI_numbers_HiUnion.sort()
-print("dic_ppi_HiUnion_valid len: ", len(dic_ppi_HiUnion_valid))
-print("----PPI_numbers_HiUnion[0:50]:---- ", PPI_numbers_HiUnion[0:50])
-print("---PPI_numbers_HiUnion[-50]:--- ", PPI_numbers_HiUnion[-50:])
-print("----PPI_numbers_HiUnion mean: ---", np.mean(PPI_numbers_HiUnion))
-print("----PPI_numbers_HiUnion median: ---", np.median(PPI_numbers_HiUnion))
 
 dic_ppi_HINT = {}
 lines = open(dirr + "HomoSapiens_binary_hq.txt").readlines()
@@ -515,11 +435,6 @@ for gene in dic_ppi_HINT:
         dic_ppi_HINT_valid[gene] = 1
         PPI_numbers_HINT.append(len(set(dic_ppi_HINT[gene])))
 PPI_numbers_HINT.sort()
-print("dic_ppi_HINT_valid len: ", len(dic_ppi_HINT_valid))
-print("----PPI_numbers_HINT[0:50]:---- ", PPI_numbers_HINT[0:50])
-print("---PPI_numbers_HINT[-50]:--- ", PPI_numbers_HINT[-50:])
-print("----PPI_numbers_HINT mean: ---", np.mean(PPI_numbers_HINT))
-print("----PPI_numbers_HINT median: ---", np.median(PPI_numbers_HINT))
 
 dic_ppi_HINT_HQ = {}
 lines = open(dirr + "HomoSapiens_htb_hq.txt").readlines()
@@ -542,11 +457,6 @@ for gene in dic_ppi_HINT_HQ:
         dic_ppi_HINT_HQ_valid[gene] = 1
         PPI_numbers_HINT_HQ.append(len(set(dic_ppi_HINT_HQ[gene])))
 PPI_numbers_HINT_HQ.sort()
-print("dic_ppi_HINT_HQ_valid len: ", len(dic_ppi_HINT_HQ_valid))
-print("----PPI_numbers_HINT_HQ[0:50]:---- ", PPI_numbers_HINT_HQ[0:50])
-print("---PPI_numbers_HINT_HQ[-50]:--- ", PPI_numbers_HINT_HQ[-50:])
-print("----PPI_numbers_HINT_HQ mean: ---", np.mean(PPI_numbers_HINT_HQ))
-print("----PPI_numbers_HINT_HQ median: ---", np.median(PPI_numbers_HINT_HQ))
 
 dic_ppi_HINT_interface_gene1_gene2 = {}
 dic_ppi_HINT_interface_gene_valid = {}
@@ -651,7 +561,7 @@ print("---PPI_numbers_HINT_interface[-50]:--- ", PPI_numbers_HINT_interface[-50:
 print("----PPI_numbers_HINT_interface mean: ---", np.mean(PPI_numbers_HINT_interface))
 print("----PPI_numbers_HINT_interface median: ---", np.median(PPI_numbers_HINT_interface))
 
-df = pd.read_csv(dirr + file_PPI)
+df = pd.read_csv(dirr + file_PPI_labels)
 display_relations = list(df["display_relation"])
 x_names = list(df["x_name"])
 y_names = list(df["y_name"])
@@ -714,9 +624,6 @@ for gene in dic_gene_labeled_number:
     gene_weights_all.append(1 / np.log2(1 + 3000.0 * dic_gene_labeled_number[gene] / total_labeled_num))
 gene_weghts_median = np.median(gene_weights_all)
 gene_weights_all.sort()
-print("----gene_weights_all[0:50]: ", gene_weights_all[0:50])
-print("----gene_weights_all[-50:]: ", gene_weights_all[-50:])
-print("-------gene_weghts_median: ", gene_weghts_median)
 ########################################getting the weights of genes based on the annotated paris###############
 
 
@@ -1461,7 +1368,7 @@ def loaddata(train_snps_ratio=0.9, negative_disease=10, negative_snps=10, flag_h
 
                     gene = dic_snps_gene[snps]
                     dic_gene_train[gene] = 1
-                    if flag_hard_mining > 0 and gene in dic_gene_negative_emb:
+                    if flag_hard_mining > 0 and gene in dic_gene_emb:
 
                         traindata_cuis.append(dic_cui_emb["benign"])  # dic_gene_train[gene]=1
                         traindata_snps.append(dic_gene_emb[gene][0:768])
